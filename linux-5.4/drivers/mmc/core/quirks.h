@@ -99,6 +99,14 @@ static const struct mmc_fixup mmc_blk_fixups[] = {
 	MMC_FIXUP("V10016", CID_MANFID_KINGSTON, CID_OEMID_ANY, add_quirk_mmc,
 		  MMC_QUIRK_TRIM_BROKEN),
 
+	/*
+	 *  On some Kingston SD cards, multiple erases of less than 64
+	 *  sectors can cause corruption.
+	 */
+	MMC_FIXUP("SD16G", 0x41, 0x3432, add_quirk, MMC_QUIRK_ERASE_BROKEN),
+	MMC_FIXUP("SD32G", 0x41, 0x3432, add_quirk, MMC_QUIRK_ERASE_BROKEN),
+	MMC_FIXUP("SD64G", 0x41, 0x3432, add_quirk, MMC_QUIRK_ERASE_BROKEN),
+
 	END_FIXUP
 };
 
@@ -119,7 +127,14 @@ static const struct mmc_fixup mmc_ext_csd_fixups[] = {
 	END_FIXUP
 };
 
+
 static const struct mmc_fixup sdio_fixup_methods[] = {
+	SDIO_FIXUP(SDIO_VENDOR_ID_TI_WL1251, SDIO_DEVICE_ID_TI_WL1251,
+		   add_quirk, MMC_QUIRK_NONSTD_FUNC_IF),
+
+	SDIO_FIXUP(SDIO_VENDOR_ID_TI_WL1251, SDIO_DEVICE_ID_TI_WL1251,
+		   add_quirk, MMC_QUIRK_DISABLE_CD),
+
 	SDIO_FIXUP(SDIO_VENDOR_ID_TI, SDIO_DEVICE_ID_TI_WL1271,
 		   add_quirk, MMC_QUIRK_NONSTD_FUNC_IF),
 

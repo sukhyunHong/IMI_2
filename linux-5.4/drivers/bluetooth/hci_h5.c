@@ -339,7 +339,8 @@ static void h5_handle_internal_rx(struct hci_uart *hu)
 		h5_link_control(hu, conf_req, 3);
 	} else if (memcmp(data, conf_req, 2) == 0) {
 		h5_link_control(hu, conf_rsp, 2);
-		h5_link_control(hu, conf_req, 3);
+		if (h5->state != H5_ACTIVE)
+		    h5_link_control(hu, conf_req, 3);
 	} else if (memcmp(data, conf_rsp, 2) == 0) {
 		if (H5_HDR_LEN(hdr) > 2)
 			h5->tx_win = (data[2] & 0x07);
@@ -790,7 +791,7 @@ static int h5_serdev_probe(struct serdev_device *serdev)
 	if (!h5)
 		return -ENOMEM;
 
-	set_bit(HCI_UART_RESET_ON_INIT, &h5->serdev_hu.flags);
+	set_bit(HCI_UART_RESET_ON_INIT, &h5->serdev_hu.hdev_flags);
 
 	h5->hu = &h5->serdev_hu;
 	h5->serdev_hu.serdev = serdev;

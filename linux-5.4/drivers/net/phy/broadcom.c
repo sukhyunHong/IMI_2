@@ -26,18 +26,13 @@ MODULE_DESCRIPTION("Broadcom PHY driver");
 MODULE_AUTHOR("Maciej W. Rozycki");
 MODULE_LICENSE("GPL");
 
+static int bcm54xx_config_clock_delay(struct phy_device *phydev);
+
 static int bcm54210e_config_init(struct phy_device *phydev)
 {
 	int val;
 
-	val = bcm54xx_auxctl_read(phydev, MII_BCM54XX_AUXCTL_SHDWSEL_MISC);
-	val &= ~MII_BCM54XX_AUXCTL_SHDWSEL_MISC_RGMII_SKEW_EN;
-	val |= MII_BCM54XX_AUXCTL_MISC_WREN;
-	bcm54xx_auxctl_write(phydev, MII_BCM54XX_AUXCTL_SHDWSEL_MISC, val);
-
-	val = bcm_phy_read_shadow(phydev, BCM54810_SHD_CLK_CTL);
-	val &= ~BCM54810_SHD_CLK_CTL_GTXCLK_EN;
-	bcm_phy_write_shadow(phydev, BCM54810_SHD_CLK_CTL, val);
+	bcm54xx_config_clock_delay(phydev);
 
 	if (phydev->dev_flags & PHY_BRCM_EN_MASTER_MODE) {
 		val = phy_read(phydev, MII_CTRL1000);
@@ -46,6 +41,11 @@ static int bcm54210e_config_init(struct phy_device *phydev)
 	}
 
 	return 0;
+}
+
+static int bcm54213pe_config_init(struct phy_device *phydev)
+{
+	return bcm54210e_config_init(phydev);
 }
 
 static int bcm54612e_config_init(struct phy_device *phydev)
@@ -218,7 +218,8 @@ static void bcm54xx_adjust_rxrefclk(struct phy_device *phydev)
 	/* Abort if we are using an untested phy. */
 	if (BRCM_PHY_MODEL(phydev) != PHY_ID_BCM57780 &&
 	    BRCM_PHY_MODEL(phydev) != PHY_ID_BCM50610 &&
-	    BRCM_PHY_MODEL(phydev) != PHY_ID_BCM50610M)
+	    BRCM_PHY_MODEL(phydev) != PHY_ID_BCM50610M &&
+	    BRCM_PHY_MODEL(phydev) != PHY_ID_BCM54213PE)
 		return;
 
 	val = bcm_phy_read_shadow(phydev, BCM54XX_SHD_SCR3);
@@ -272,6 +273,9 @@ static void bcm54xx_adjust_rxrefclk(struct phy_device *phydev)
 static int bcm54xx_config_init(struct phy_device *phydev)
 {
 	int reg, err, val;
+	u32 led_modes[] = {BCM_LED_MULTICOLOR_LINK_ACT,
+			   BCM_LED_MULTICOLOR_LINK};
+	struct device_node *np = phydev->mdio.dev.of_node;
 
 	reg = phy_read(phydev, MII_BCM54XX_ECR);
 	if (reg < 0)
@@ -305,6 +309,10 @@ static int bcm54xx_config_init(struct phy_device *phydev)
 		err = bcm54210e_config_init(phydev);
 		if (err)
 			return err;
+	} else if (BRCM_PHY_MODEL(phydev) == PHY_ID_BCM54213PE) {
+		err = bcm54213pe_config_init(phydev);
+		if (err)
+			return err;
 	} else if (BRCM_PHY_MODEL(phydev) == PHY_ID_BCM54612E) {
 		err = bcm54612e_config_init(phydev);
 		if (err)
@@ -323,17 +331,15 @@ static int bcm54xx_config_init(struct phy_device *phydev)
 
 	bcm54xx_phydsp_config(phydev);
 
-	/* Encode link speed into LED1 and LED3 pair (green/amber).
-	 * Also flash these two LEDs on activity. This means configuring
-	 * them for MULTICOLOR and encoding link/activity into them.
-	 */
+	of_property_read_u32_array(np, "led-modes", led_modes, 2);
+
 	val = BCM5482_SHD_LEDS1_LED1(BCM_LED_SRC_MULTICOLOR1) |
 		BCM5482_SHD_LEDS1_LED3(BCM_LED_SRC_MULTICOLOR1);
 	bcm_phy_write_shadow(phydev, BCM5482_SHD_LEDS1, val);
 
 	val = BCM_LED_MULTICOLOR_IN_PHASE |
-		BCM5482_SHD_LEDS1_LED1(BCM_LED_MULTICOLOR_LINK_ACT) |
-		BCM5482_SHD_LEDS1_LED3(BCM_LED_MULTICOLOR_LINK_ACT);
+		BCM5482_SHD_LEDS1_LED1(led_modes[0]) |
+		BCM5482_SHD_LEDS1_LED3(led_modes[1]);
 	bcm_phy_write_exp(phydev, BCM_EXP_MULTICOLOR, val);
 
 	return 0;
@@ -624,8 +630,16 @@ static struct phy_driver broadcom_drivers[] = {
 	.config_intr	= bcm_phy_config_intr,
 }, {
 	.phy_id		= PHY_ID_BCM54210E,
-	.phy_id_mask	= 0xfffffff0,
+	.phy_id_mask	= 0xffffffff,
 	.name		= "Broadcom BCM54210E",
+	/* PHY_GBIT_FEATURES */
+	.config_init	= bcm54xx_config_init,
+	.ack_interrupt	= bcm_phy_ack_intr,
+	.config_intr	= bcm_phy_config_intr,
+}, {
+	.phy_id		= PHY_ID_BCM54213PE,
+	.phy_id_mask	= 0xffffffff,
+	.name		= "Broadcom BCM54213PE",
 	/* PHY_GBIT_FEATURES */
 	.config_init	= bcm54xx_config_init,
 	.ack_interrupt	= bcm_phy_ack_intr,
@@ -757,7 +771,8 @@ module_phy_driver(broadcom_drivers);
 static struct mdio_device_id __maybe_unused broadcom_tbl[] = {
 	{ PHY_ID_BCM5411, 0xfffffff0 },
 	{ PHY_ID_BCM5421, 0xfffffff0 },
-	{ PHY_ID_BCM54210E, 0xfffffff0 },
+	{ PHY_ID_BCM54210E, 0xffffffff },
+	{ PHY_ID_BCM54213PE, 0xffffffff },
 	{ PHY_ID_BCM5461, 0xfffffff0 },
 	{ PHY_ID_BCM54612E, 0xfffffff0 },
 	{ PHY_ID_BCM54616S, 0xfffffff0 },

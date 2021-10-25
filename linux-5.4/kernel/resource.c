@@ -214,6 +214,12 @@ static int __release_resource(struct resource *old, bool release_child)
 {
 	struct resource *tmp, **p, *chd;
 
+	if (!old->parent) {
+		WARN(old->sibling, "sibling but no parent");
+		if (old->sibling)
+			return -EINVAL;
+		return 0;
+	}
 	p = &old->parent->child;
 	for (;;) {
 		tmp = *p;
@@ -1126,6 +1132,7 @@ struct resource * __request_region(struct resource *parent,
 {
 	DECLARE_WAITQUEUE(wait, current);
 	struct resource *res = alloc_resource(GFP_KERNEL);
+	struct resource *orig_parent = parent;
 
 	if (!res)
 		return NULL;
@@ -1176,6 +1183,10 @@ struct resource * __request_region(struct resource *parent,
 		break;
 	}
 	write_unlock(&resource_lock);
+
+	if (res && orig_parent == &iomem_resource)
+		revoke_devmem(res);
+
 	return res;
 }
 EXPORT_SYMBOL(__request_region);

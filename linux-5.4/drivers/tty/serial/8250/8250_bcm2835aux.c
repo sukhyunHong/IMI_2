@@ -50,7 +50,8 @@ static int bcm2835aux_serial_probe(struct platform_device *pdev)
 	data->clk = devm_clk_get(&pdev->dev, NULL);
 	ret = PTR_ERR_OR_ZERO(data->clk);
 	if (ret) {
-		dev_err(&pdev->dev, "could not get clk: %d\n", ret);
+		if (ret != -EPROBE_DEFER)
+			dev_err(&pdev->dev, "could not get clk: %d\n", ret);
 		return ret;
 	}
 
@@ -91,6 +92,13 @@ static int bcm2835aux_serial_probe(struct platform_device *pdev)
 	 */
 	data->uart.port.uartclk = clk_get_rate(data->clk) * 2;
 
+	/* The clock is only queried at probe time, which means we get one shot
+	 * at this. A zero clock is never going to work and is almost certainly
+	 * due to a parent not being ready, so prefer to defer.
+	 */
+	if (!data->uart.port.uartclk)
+	    return -EPROBE_DEFER;
+
 	/* register the port */
 	ret = serial8250_register_8250_port(&data->uart);
 	if (ret < 0) {
@@ -113,7 +121,7 @@ static int bcm2835aux_serial_remove(struct platform_device *pdev)
 {
 	struct bcm2835aux_data *data = platform_get_drvdata(pdev);
 
-	serial8250_unregister_port(data->uart.port.line);
+	serial8250_unregister_port(data->line);
 	clk_disable_unprepare(data->clk);
 
 	return 0;

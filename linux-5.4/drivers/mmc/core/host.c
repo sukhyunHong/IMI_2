@@ -176,7 +176,6 @@ int mmc_of_parse(struct mmc_host *host)
 	u32 bus_width, drv_type, cd_debounce_delay_ms;
 	int ret;
 	bool cd_cap_invert, cd_gpio_invert = false;
-	bool ro_cap_invert, ro_gpio_invert = false;
 
 	if (!dev || !dev_fwnode(dev))
 		return 0;
@@ -255,9 +254,11 @@ int mmc_of_parse(struct mmc_host *host)
 	}
 
 	/* Parse Write Protection */
-	ro_cap_invert = device_property_read_bool(dev, "wp-inverted");
 
-	ret = mmc_gpiod_request_ro(host, "wp", 0, 0, &ro_gpio_invert);
+	if (device_property_read_bool(dev, "wp-inverted"))
+		host->caps2 |= MMC_CAP2_RO_ACTIVE_HIGH;
+
+	ret = mmc_gpiod_request_ro(host, "wp", 0, 0, NULL);
 	if (!ret)
 		dev_info(host->parent, "Got WP GPIO\n");
 	else if (ret != -ENOENT && ret != -ENOSYS)
@@ -265,10 +266,6 @@ int mmc_of_parse(struct mmc_host *host)
 
 	if (device_property_read_bool(dev, "disable-wp"))
 		host->caps2 |= MMC_CAP2_NO_WRITE_PROTECT;
-
-	/* See the comment on CD inversion above */
-	if (ro_cap_invert ^ ro_gpio_invert)
-		host->caps2 |= MMC_CAP2_RO_ACTIVE_HIGH;
 
 	if (device_property_read_bool(dev, "cap-sd-highspeed"))
 		host->caps |= MMC_CAP_SD_HIGHSPEED;
@@ -400,15 +397,30 @@ struct mmc_host *mmc_alloc_host(int extra, struct device *dev)
 {
 	int err;
 	struct mmc_host *host;
+	int id;
 
 	host = kzalloc(sizeof(struct mmc_host) + extra, GFP_KERNEL);
 	if (!host)
 		return NULL;
 
+	/* If OF aliases exist, start dynamic assignment after highest */
+	id = of_alias_get_highest_id("mmc");
+	id = (id < 0) ? 0 : id + 1;
+
+	/* If this devices has OF node, maybe it has an alias */
+	if (dev->of_node) {
+		int of_id = of_alias_get_id(dev->of_node, "mmc");
+
+		if (of_id < 0)
+			dev_warn(dev, "/aliases ID not available\n");
+		else
+			id = of_id;
+	}
+
 	/* scanning will be enabled when we're ready */
 	host->rescan_disable = 1;
 
-	err = ida_simple_get(&mmc_host_ida, 0, 0, GFP_KERNEL);
+	err = ida_simple_get(&mmc_host_ida, id, 0, GFP_KERNEL);
 	if (err < 0) {
 		kfree(host);
 		return NULL;

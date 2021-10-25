@@ -147,6 +147,12 @@ config GPIO_BCM_KONA
 	help
 	  Turn on GPIO support for Broadcom "Kona" chips.
 
+config GPIO_BCM_VIRT
+	bool "Broadcom Virt GPIO"
+	depends on OF_GPIO && RASPBERRYPI_FIRMWARE && (ARCH_BCM2835 || COMPILE_TEST)
+	help
+	  Turn on virtual GPIO support for Broadcom BCM283X chips.
+
 config GPIO_BRCMSTB
 	tristate "BRCMSTB GPIO support"
 	default y if (ARCH_BRCMSTB || BMIPS_GENERIC)
@@ -546,7 +552,6 @@ config GPIO_THUNDERX
 	tristate "Cavium ThunderX/OCTEON-TX GPIO"
 	depends on ARCH_THUNDER || (64BIT && COMPILE_TEST)
 	depends on PCI_MSI
-	select GPIOLIB_IRQCHIP
 	select IRQ_DOMAIN_HIERARCHY
 	select IRQ_FASTEOI_HIERARCHY_HANDLERS
 	help
@@ -1066,6 +1071,15 @@ config HTC_EGPIO
 	  several HTC phones.  It provides basic support for input
 	  pins, output pins, and irqs.
 
+config GPIO_FSM
+	tristate "GPIO FSM support"
+	help
+	  The GPIO FSM driver allows the creation of state machines for
+	  manipulating GPIOs (both real and virtual), with state transitions
+	  triggered by GPIO edges or delays.
+
+	  If unsure, say N.
+
 config GPIO_JANZ_TTL
 	tristate "Janz VMOD-TTL Digital IO Module"
 	depends on MFD_JANZ_CMODIO
@@ -1121,6 +1135,7 @@ config GPIO_MADERA
 config GPIO_MAX77620
 	tristate "GPIO support for PMIC MAX77620 and MAX20024"
 	depends on MFD_MAX77620
+	select GPIOLIB_IRQCHIP
 	help
 	  GPIO driver for MAX77620 and MAX20024 PMIC from Maxim Semiconductor.
 	  MAX77620 PMIC has 8 pins that can be configured as GPIOs. The

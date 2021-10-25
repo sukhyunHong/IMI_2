@@ -348,7 +348,7 @@ static struct gpio_desc *i2c_gpio_get_desc(struct device *dev,
 	if (ret == -ENOENT)
 		retdesc = ERR_PTR(-EPROBE_DEFER);
 
-	if (ret != -EPROBE_DEFER)
+	if (PTR_ERR(retdesc) != -EPROBE_DEFER)
 		dev_err(dev, "error trying to get descriptor: %d\n", ret);
 
 	return retdesc;
@@ -445,7 +445,9 @@ static int i2c_gpio_probe(struct platform_device *pdev)
 	adap->dev.parent = dev;
 	adap->dev.of_node = np;
 
-	adap->nr = pdev->id;
+	if (pdev->id != PLATFORM_DEVID_NONE || !pdev->dev.of_node ||
+	    of_property_read_u32(pdev->dev.of_node, "reg", &adap->nr))
+		adap->nr = pdev->id;
 	ret = i2c_bit_add_numbered_bus(adap);
 	if (ret)
 		return ret;

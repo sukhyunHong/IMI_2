@@ -182,10 +182,15 @@ static void __init register_insn_emulation(struct insn_emulation_ops *ops)
 
 	switch (ops->status) {
 	case INSN_DEPRECATED:
+#if 0
 		insn->current_mode = INSN_EMULATE;
 		/* Disable the HW mode if it was turned on at early boot time */
 		run_all_cpu_set_hw_mode(insn, false);
+#else
+		insn->current_mode = INSN_HW;
+		run_all_cpu_set_hw_mode(insn, true);
 		insn->max = INSN_HW;
+#endif
 		break;
 	case INSN_OBSOLETE:
 		insn->current_mode = INSN_UNDEF;
@@ -601,7 +606,7 @@ static struct undef_hook setend_hooks[] = {
 	},
 	{
 		/* Thumb mode */
-		.instr_mask	= 0x0000fff7,
+		.instr_mask	= 0xfffffff7,
 		.instr_val	= 0x0000b650,
 		.pstate_mask	= (PSR_AA32_T_BIT | PSR_AA32_MODE_MASK),
 		.pstate_val	= (PSR_AA32_T_BIT | PSR_AA32_MODE_USR),

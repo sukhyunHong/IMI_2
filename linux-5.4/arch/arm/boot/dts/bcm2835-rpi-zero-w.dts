@@ -24,7 +24,7 @@
 
 	leds {
 		act {
-			gpios = <&gpio 47 GPIO_ACTIVE_HIGH>;
+			gpios = <&gpio 47 GPIO_ACTIVE_LOW>;
 		};
 	};
 
@@ -112,6 +112,7 @@
 &sdhci {
 	#address-cells = <1>;
 	#size-cells = <0>;
+	pinctrl-names = "default";
 	pinctrl-0 = <&emmc_gpio34 &gpclk2_gpio43>;
 	bus-width = <4>;
 	mmc-pwrseq = <&wifi_pwrseq>;
@@ -147,4 +148,9 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&uart1_gpio14>;
 	status = "okay";
+};
+
+/* i2c on camera/display connector is gpio 28&29 */
+&i2c0mux {
+	pinctrl-1 = <&i2c0_gpio28>;
 };
