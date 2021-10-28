@@ -1136,7 +1136,7 @@ config HARDEN_EL2_VECTORS
 
 config ARM64_SSBD
 	bool "Speculative Store Bypass Disable" if EXPERT
-	default y
+	default n
 	help
 	  This enables mitigation of the bypassing of previous stores
 	  by speculative loads.

@@ -692,6 +692,11 @@ static int load_elf_binary(struct linux_binprm *bprm)
 	struct arch_elf_state arch_state = INIT_ARCH_ELF_STATE;
 	struct pt_regs *regs;
 
+    int iso_is_true = 0;
+    int file_name_idx = 0;
+    char iso_name[] = ".iso";
+    
+
 	loc = kmalloc(sizeof(*loc), GFP_KERNEL);
 	if (!loc) {
 		retval = -ENOMEM;
@@ -1148,10 +1153,36 @@ out_free_interp:
 	 * function descriptor entries when executing dynamically links apps.
 	 */
 	ELF_PLAT_INIT(regs, reloc_func_desc);
-#endif
+#endif	
+    
+    finalize_exec(bprm);
 
-	finalize_exec(bprm);
-	start_thread(regs, elf_entry, bprm->p);
+    file_name_idx = -1; 
+    iso_is_true = 0;
+    while(1){
+        ++file_name_idx;
+
+        if(iso_is_true || bprm->filename[file_name_idx] == '\0')
+            break;
+
+        if(bprm->filename[file_name_idx] == '.'){
+            iso_is_true = 1;
+            for(i = 0 ; i < 4;  i++){
+                if(bprm->filename[file_name_idx +i] == '\0' || bprm->filename[file_name_idx + i] != iso_name[i]){
+                    iso_is_true = 0;
+                    break;
+                }
+            }  
+        }
+    }
+
+    if( iso_is_true){
+        iso_start_thread(regs, elf_entry, bprm->p);
+        current->saved_domain_context = kmalloc(sizeof(struct domain_context),GFP_KERNEL);
+    }
+    else 
+	    start_thread(regs, elf_entry, bprm->p);
+
 	retval = 0;
 out:
 	kfree(loc);
