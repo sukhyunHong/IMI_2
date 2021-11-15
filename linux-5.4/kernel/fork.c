@@ -3542,6 +3542,7 @@ SYSCALL_DEFINE0(iso_init)
 {
 	unsigned long size = 2*1024*1024;
 	unsigned long addr = 0x0000ffff99861000;
+	long cntkctl;
 
 	printk("start iso_init\n");
 
@@ -3567,6 +3568,14 @@ SYSCALL_DEFINE0(iso_init)
 	current->iso_meta_data[0].asid = ASID(current->mm);
 
 	printk("ttbr: %px\n", current->iso_meta_data[0].ttbr);
+
+
+	// to read CNTPCT_EL0 register in exception level 0, 
+	// turn on CNTKCTL_EL1.EL0PCTEN.
+	asm volatile ("mrs %0, CNTKCTL_EL1\r\n"
+		"orr %0, %0, #1\r\n"
+		"msr CNTKCTL_EL1, %0\r\n"
+		:"=r" (cntkctl));
 
 	return addr;
 }
