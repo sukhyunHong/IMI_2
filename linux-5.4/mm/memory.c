@@ -162,7 +162,7 @@ void update_domain_pte(unsigned long addr,  pte_t* src_pte){
 
     printk("===update_domain_pte called, addr: %lx===\n", addr);
     while(dml != NULL){
-        printk("in while\n");
+        //printk("in while\n");
         d_vma = find_vma(dml->mm, addr);
     
        
@@ -177,7 +177,7 @@ void update_domain_pte(unsigned long addr,  pte_t* src_pte){
             dml = dml->next;
             continue; 
         }
-		printk("addr is exist in this mm\n");
+		//printk("addr is exist in this mm\n");
       
         d_mm = d_vma->vm_mm;
         
@@ -213,6 +213,8 @@ void update_domain_pte(unsigned long addr,  pte_t* src_pte){
         ptl = pte_lockptr(d_mm, pmd);
         pte = pte_offset_map_lock(d_mm, pmd,addr, &ptl);
         set_pte_at(d_mm, addr, pte, *src_pte);
+
+		flush_tlb_page(d_vma, addr);
         pte_unmap_unlock(pte, ptl);
 
         dml = dml->next;
