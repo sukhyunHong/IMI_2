@@ -160,19 +160,19 @@ void update_domain_pte(unsigned long addr,  pte_t* src_pte){
     if(!src_pte)
         return ;
 
-    printk("===update_domain_pte called, addr: %lx===\n", addr);
+    //printk("===update_domain_pte called, addr: %lx===\n", addr);
     while(dml != NULL){
         d_vma = find_vma(dml->mm, addr);
     
        
         if(d_vma == NULL){
-			printk("vma is not exist in this mm\n");
+			//printk("vma is not exist in this mm\n");
             dml = dml->next;
             continue;
         }
         
         if(d_vma->vm_start > addr || d_vma->vm_end < addr){
-			printk("addr is not exist in this mm\n");
+			//printk("addr is not exist in this mm\n");
             dml = dml->next;
             continue; 
         }
@@ -185,19 +185,19 @@ void update_domain_pte(unsigned long addr,  pte_t* src_pte){
         p4d = p4d_alloc(d_mm,pgd,addr);
 
 
-        if(!p4d)
-            printk("Debug p4d oom\n");
+        //if(!p4d)
+            //printk("Debug p4d oom\n");
     
         pud = pud_alloc(d_mm, p4d, addr);
     
         if(!pud){
-            printk("Debug pud oom\n");
+            //printk("Debug pud oom\n");
 		    return;
 	    }
         pmd = pmd_alloc(d_mm, pud, addr );
     
         if(!pmd){
-            printk("Debug pmd oom\n");
+            //printk("Debug pmd oom\n");
 		    return;
 	    }
 
@@ -4885,7 +4885,7 @@ iso_copy_one_pte(struct mm_struct *dst_mm, struct mm_struct *src_mm,
 	/* pte contains position in swap or file, so copy. */
 	if (unlikely(!pte_present(pte))) {
 		swp_entry_t entry = pte_to_swp_entry(pte);
-		printk("in iso_copy_one_pte, pte contains position in swap or file.\n");
+		//printk("in iso_copy_one_pte, pte contains position in swap or file.\n");
 
 		if (likely(!non_swap_entry(entry))) {
 			if (swap_duplicate(entry) < 0)
@@ -4983,7 +4983,7 @@ iso_copy_one_pte(struct mm_struct *dst_mm, struct mm_struct *src_mm,
 
 out_set_pte:
 	set_pte_at(dst_mm, addr, dst_pte, pte);
-	printk("fin iso_copy_one_pte, addr: %lx\n", addr);
+	//printk("fin iso_copy_one_pte, addr: %lx\n", addr);
 	return 0;
 }
 
@@ -5158,8 +5158,8 @@ int iso_copy_page_range(struct mm_struct *dst_mm, struct mm_struct *src_mm,
 	 * efficient than faulting.
 	 */
 
-	printk("iso_copy from : %lx, end: %lx\n", addr, end);
-	printk("vma flags: %lx\n", vma->vm_flags);
+	// printk("iso_copy from : %lx, end: %lx\n", addr, end);
+	// printk("vma flags: %lx\n", vma->vm_flags);
 	
 	/*
 	if (!(vma->vm_flags & (VM_HUGETLB | VM_PFNMAP | VM_MIXEDMAP)) &&
