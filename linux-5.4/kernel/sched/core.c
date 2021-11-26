@@ -3427,7 +3427,7 @@ void save_domain_context(struct task_struct * tsk){
             :);
     tsk->saved_domain_context->ttbr0 = ttbr0;
     tsk->saved_domain_context->ttbr1 = ttbr1;
-    printk("saved context %lx %lx \n", ttbr0, ttbr1);
+    //printk("saved context %lx %lx \n", ttbr0, ttbr1);
 }
 
 /*

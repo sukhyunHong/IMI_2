@@ -3193,7 +3193,7 @@ static __latent_entropy int iso_copy_address(struct mm_struct *mm,
 	mpnt = find_vma(oldmm, addr);
 	//printk("copy_page_range called\n");
 	//printk("vma range start: %lx, end: %lx\n", mpnt->vm_start, mpnt->vm_end);
-	printk("===copy_page_range called===\n");
+	//printk("===copy_page_range called===\n");
 
 	for (; mpnt; mpnt = mpnt->vm_next) {
 		struct file *file;
@@ -3204,7 +3204,7 @@ static __latent_entropy int iso_copy_address(struct mm_struct *mm,
 			break;
 		if(addr+size <= mpnt->vm_start)
 			break;
-		printk("vma range start: %lx, end: %lx\n", mpnt->vm_start, mpnt->vm_end);
+		//printk("vma range start: %lx, end: %lx\n", mpnt->vm_start, mpnt->vm_end);
 
 		if (mpnt->vm_flags & VM_DONTCOPY) {
 			vm_stat_account(mm, mpnt->vm_flags, -vma_pages(mpnt));
@@ -3308,9 +3308,9 @@ static __latent_entropy int iso_copy_address(struct mm_struct *mm,
 
 		mm->map_count++;
 		//if (!(tmp->vm_flags & VM_WIPEONFORK))
-			printk("call copy_page_range, start: %lx, end: %lx\n", start, end);
+			//printk("call copy_page_range, start: %lx, end: %lx\n", start, end);
 			retval = iso_copy_page_range(mm, oldmm, mpnt, start, end);
-			printk("iso_copy_page_range retval: %d\n", retval);
+			//printk("iso_copy_page_range retval: %d\n", retval);
 
 		if (tmp->vm_ops && tmp->vm_ops->open)
 			tmp->vm_ops->open(tmp);
@@ -3453,15 +3453,15 @@ struct mm_struct * make_domain_test(unsigned long *stack_addr , int dom_num)
 	
 	// domain metadata 저장.
 	//((dom_data*)tsk->iso_meta_data)[1].ttbr = (unsigned long*)tsk->domain_mm->pgd;
-	((dom_data*)tsk->iso_meta_data)[1].ttbr = (unsigned long*)(phys_to_ttbr(virt_to_phys(domain_mm->pgd)) & 0x0000FFFFFFFFFFFF);
-	((dom_data*)current->iso_meta_data)[1].asid = iso_alloc_new_asid(domain_mm);
-	printk("new domain's asid: %lx\n", ((dom_data*)current->iso_meta_data)[1].asid);
+	((dom_data*)tsk->iso_meta_data)[dom_num].ttbr = (unsigned long*)(phys_to_ttbr(virt_to_phys(domain_mm->pgd)) & 0x0000FFFFFFFFFFFF);
+	((dom_data*)current->iso_meta_data)[dom_num].asid = iso_alloc_new_asid(domain_mm);
+	printk("new domain's asid: %lx\n", ((dom_data*)current->iso_meta_data)[dom_num].asid);
 
 	// systemcall이 아닌 trampoline page에서 바로 ttbr1_el1의 asid를 바로 교체할 것이라서 tramp_ret부분꺼 가져옴.
 	//((dom_data*)current->iso_meta_data)[1].asid -= 0x1 << 12;
 	//((dom_data*)current->iso_meta_data)[1].asid |= 0x1;
 
-	((dom_data*)tsk->iso_meta_data)[1].sp_val = *stack_addr;
+	((dom_data*)tsk->iso_meta_data)[dom_num].sp_val = *stack_addr;
 	
     domain_mm->hiwater_rss = get_mm_rss(domain_mm);
     domain_mm->hiwater_vm = domain_mm->total_vm;
@@ -3492,28 +3492,26 @@ fail_nomem:
 	return NULL;
 }
 
-SYSCALL_DEFINE2(iso_create_domain, uint64_t **, ttbr0, unsigned long *, stack_addr)
-{
-    int dom_num = 1;
+uint64_t iso_create_domain_wrapper(unsigned long *stack_addr) {
     struct mm_struct * domain_mm;
-    /*
-    *ttbr0 = (uint64_t *)pgd_alloc(NULL);
-    memset(*ttbr0, 0, PGD_SIZE);
-    *ttbr0 = (uint64_t *)virt_to_phys(*ttbr0);
-    *ttbr0 = (uint64_t *)phys_to_ttbr(*ttbr0);
-    */
-    domain_mm = make_domain_test(stack_addr, dom_num);
+
+    domain_mm = make_domain_test(stack_addr, current->dom_cnt+1);
 
 	if(domain_mm){
-        printk("domain %d created\n",dom_num);
-    	*ttbr0 = (uint64_t*)((uint64_t)phys_to_ttbr(virt_to_phys(domain_mm->pgd)) & 0x0000FFFFFFFFFFFF);
-        return 0;
+		current->dom_cnt++;
+        printk("domain %ld created\n",current->dom_cnt);
+    	//*ttbr0 = (uint64_t*)((uint64_t)phys_to_ttbr(virt_to_phys(domain_mm->pgd)) & 0x0000FFFFFFFFFFFF);
+        return current->dom_cnt;
     }
     return -1;
 }
 
+SYSCALL_DEFINE2(iso_create_domain, uint64_t **, ttbr0, unsigned long *, stack_addr)
+{
+   return iso_create_domain_wrapper(stack_addr);
+}
 
-SYSCALL_DEFINE3(iso_assign_memory, int, dom_num, uint64_t, addr, uint64_t, size)
+unsigned long iso_assign_memory_wrapper(int dom_num, uint64_t addr, uint64_t size)
 {
     struct domain_mm_list *dml = current->domain_mm;
     struct mm_struct *d_mm;
@@ -3537,23 +3535,29 @@ SYSCALL_DEFINE3(iso_assign_memory, int, dom_num, uint64_t, addr, uint64_t, size)
     return iso_copy_address(d_mm, current->mm, addr, size);
 }
 
+SYSCALL_DEFINE3(iso_assign_memory, int, dom_num, uint64_t, addr, uint64_t, size) {
+	return iso_assign_memory_wrapper(dom_num, addr, size);
+}
+
 
 SYSCALL_DEFINE0(iso_init)
 {
 	unsigned long size = 2*1024*1024;
 	unsigned long addr = 0x0000ffff99861000;
+	unsigned long ret_mmap;
 	long cntkctl;
 
-	printk("start iso_init\n");
+	//printk("start iso_init\n");
 
 	current->is_iso = 1;
+	current->dom_cnt = 0;
 
 
-	addr = ksys_mmap_pgoff(addr, size, 
+	ret_mmap = ksys_mmap_pgoff(addr, size, 
 				PROT_READ | PROT_WRITE, 
 				MAP_PRIVATE | MAP_ANONYMOUS | MAP_STACK | MAP_FIXED, -1, 0);
-	printk("iso_init addr: %lx\n", addr);
-	if(unlikely(addr == -1) || unlikely(addr == 0)) {
+	//printk("iso_init addr: %lx\n", addr);
+	if(unlikely(ret_mmap != addr)) {
 		printk("iso_init error!\n");
 		return 0;
 	}
@@ -3567,7 +3571,7 @@ SYSCALL_DEFINE0(iso_init)
 	current->iso_meta_data[0].ttbr = (unsigned long*)(phys_to_ttbr(virt_to_phys(current->mm->pgd)) & 0x0000FFFFFFFFFFFF);
 	current->iso_meta_data[0].asid = ASID(current->mm);
 
-	printk("ttbr: %px\n", current->iso_meta_data[0].ttbr);
+	//printk("ttbr: %px\n", current->iso_meta_data[0].ttbr);
 
 
 	// to read CNTPCT_EL0 register in exception level 0, 
@@ -3589,9 +3593,9 @@ static void print_all_vma(void)
 
 	mm = current->domain_mm->mm; // -> need to be modified
 	for(mpnt = mm->mmap; mpnt; mpnt = mpnt->vm_next) {
-		printk("vma start: %lx, end: %lx\n\n", mpnt->vm_start, mpnt->vm_end);
+		//printk("vma start: %lx, end: %lx\n\n", mpnt->vm_start, mpnt->vm_end);
 		rb_mpnt = find_vma(mm, mpnt->vm_start);
-		printk("rb vma find val: %px\n", rb_mpnt);
+		//printk("rb vma find val: %px\n", rb_mpnt);
 	}
 }
 
@@ -3602,4 +3606,9 @@ SYSCALL_DEFINE0(iso_flush_tlb_all)
 	// print all vma using linked list..
 	print_all_vma();
     return 0;
+}
+
+SYSCALL_DEFINE1(iso_change_domain, int, dom_num)
+{
+	return 0;
 }

@@ -189,7 +189,7 @@ static inline void update_saved_ttbr0(struct task_struct *tsk,
 		return;
     
    
-    printk("SW TTBR 0 ON\n");
+    //printk("SW TTBR 0 ON\n");
 
 	if (mm == &init_mm)
 		ttbr = __pa_symbol(empty_zero_page);
@@ -252,7 +252,7 @@ load_domain_context(struct task_struct * tsk){
 			ARM64_WORKAROUND_CAVIUM_27456,
 			CONFIG_CAVIUM_ERRATUM_27456));
 
-      printk("load context %lx %lx\n", ttbr0, ttbr1);
+      //printk("load context %lx %lx\n", ttbr0, ttbr1);
 }
 
 
