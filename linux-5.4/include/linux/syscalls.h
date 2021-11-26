@@ -1232,6 +1232,7 @@ asmlinkage long sys_ni_syscall(void);
  asmlinkage unsigned long sys_iso_assign_memory(int dom_num, uint64_t addr, uint64_t size);
  asmlinkage long sys_iso_init(void);
  asmlinkage long sys_iso_flush_tlb_all(void);
+ asmlinkage long sys_iso_change_domain(int dom_num);
 
 /*
  * Kernel code should not call syscalls (i.e., sys_xyzyyz()) directly.

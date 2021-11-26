@@ -892,3 +892,5 @@ __SYSCALL(__NR_iso_assign_memory, sys_iso_assign_memory)
 __SYSCALL(__NR_iso_init, sys_iso_init)
 #define __NR_iso_flush_tlb_all 439
 __SYSCALL(__NR_iso_flush_tlb_all, sys_iso_flush_tlb_all)
+#define __NR_iso_change_domain 440
+__SYSCALL(__NR_iso_change_domain, sys_iso_change_domain)
