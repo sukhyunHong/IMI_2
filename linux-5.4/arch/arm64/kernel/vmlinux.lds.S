@@ -68,6 +68,10 @@ jiffies = jiffies_64;
 #ifdef CONFIG_UNMAP_KERNEL_AT_EL0
 #define TRAMP_TEXT					\
 	. = ALIGN(PAGE_SIZE);				\
+	__entry_iso_change_code_start = .;			\
+	*(.iso_change_code.text)				\
+	. = ALIGN(PAGE_SIZE);				\
+	__entry_iso_change_code_end = .;	\
 	__entry_tramp_text_start = .;			\
 	*(.entry.tramp.text)				\
 	. = ALIGN(PAGE_SIZE);				\
